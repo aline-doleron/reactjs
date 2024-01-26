@@ -1,39 +1,109 @@
+import { format, formatDistanceToNow } from 'date-fns';
+import ptBR from 'date-fns/locale/pt-BR';
+import { Avatar } from "./Avatar";
+import { Comment } from "./Comment";
 import styles from "./Post.module.css";
+import { ChangeEvent, FormEvent, useState } from 'react';
 
-export function Post() {
+interface Author {
+    avatarUrl: string;
+    name: string;
+    role: string;
+}
+
+export interface PostType {
+    id?: number;
+    author: Author;
+    publishedAt: Date;
+    content?: { type: 'paragraph' | 'link'; content: string }[]
+}
+
+
+export function Post({ author, content, publishedAt }: PostType) {
+    const [comments, setComments] = useState<string[]>([]);
+    const [newComment, setNewComment] = useState('');
+
+    const publishedDateFormatted = format(publishedAt, "d 'de' LLLL 'às' HH:mm'h'", {
+        locale: ptBR,
+    })
+
+    const publishedDateRelativeToNow = formatDistanceToNow(publishedAt, {
+        locale: ptBR,
+        addSuffix: true
+    })
+
+    function handleAddComment(event: FormEvent) {
+        event?.preventDefault();
+
+        setComments([
+            ...comments,
+            newComment
+        ]);
+
+        setNewComment('');
+    }
+
+    function handleCommentChange(event: ChangeEvent<HTMLTextAreaElement>) {
+        setNewComment(event.target.value);
+    }
+
+    function deleteComment(deletedComment: string) {
+        const commentsWithoutDeletedOne = comments.filter(comment => {
+            return comment !== deletedComment
+        });
+
+        setComments(commentsWithoutDeletedOne);
+
+    }
+
     return (
         <article className={styles.post}>
             <header>
                 <div className={styles.author}>
-                    <img className={styles.avatar} src="https://github.com/aline-doleron.png" />
+                    <Avatar src={author.avatarUrl} />
                     <div className={styles.authorInfo}>
-                        <strong>Aline DOleron</strong>
-                        <span>Web Developer</span>
+                        <strong>{author.name}</strong>
+                        <span>{author.role}</span>
 
                     </div>
                 </div>
 
-                <time title=" 11 de Maio as 8:13" dateTime="2022-05-11 08:12:23">Publicado há 1h</time>
+                <time title={publishedDateFormatted} dateTime={publishedAt.toISOString()}>
+                    {publishedDateRelativeToNow}
+                </time>
             </header>
             <div className={styles.content}>
-                <p>Fala galeraa 👋</p>
-
-                <p>Acabei de subir mais um projeto no meu portifa. É um projeto que fiz no NLW Return, evento da Rocketseat. O nome do projeto é DoctorCare 🚀
-                </p>
-                <p>jane.design/doctorcare 👉 </p>
-
-                <p> #novoprojeto #nlw #rocketseat </p>
+                {content?.map(item => {
+                    if (item.type === 'link') {
+                        return (
+                            <p key={item.content}><a href='#'>{item.content}</a></p>
+                        )
+                    } else {
+                        return (
+                            <p key={item.content}>{item.content}</p>
+                        )
+                    }
+                })}
             </div>
 
-            <form className={styles.commentForm}>
+            <form onSubmit={handleAddComment} className={styles.commentForm}>
                 <strong>Deixe seu comentario</strong>
 
-                <textarea placeholder="Deixe seu comentario" />
+                <textarea name="comment" value={newComment} onChange={handleCommentChange} placeholder="Deixe seu comentario" required />
 
                 <footer>
-                    <button type="submit">Publicar</button>
+                    <button type="submit" disabled={newComment.length === 0}>Publicar</button>
                 </footer>
             </form>
+
+            <div className={styles.commentList}>
+                {comments.map(comment => {
+                    return (
+                        <Comment onDeleteComment={deleteComment} key={comment} content={comment} />
+                    )
+                })}
+
+            </div>
         </article >
     )
 }
